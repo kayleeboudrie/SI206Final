@@ -1,15 +1,15 @@
 {
   "action": "getArticles",
-  "keyword": "Tesla Inc",
+  "dateStart": "2017-04-22",
+  "dateEnd": "2017-04-22",
+  "keyword": "Trump",
   "sourceLocationUri": [
-    "http://en.wikipedia.org/wiki/United_States",
-    "http://en.wikipedia.org/wiki/Canada",
-    "http://en.wikipedia.org/wiki/United_Kingdom"
+    "http://en.wikipedia.org/wiki/United_States"
   ],
   "ignoreSourceGroupUri": "paywall/paywalled_sources",
   "articlesPage": 1,
   "articlesCount": 100,
-  "articlesSortBy": "date",
+  "articlesSortBy": "socialScore",
   "articlesSortByAsc": false,
   "dataType": [
     "news",
