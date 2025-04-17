@@ -1,38 +1,50 @@
-
 import sqlite3
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
 def join_and_analyze():
-    conn = sqlite3.connect("data/approval_data.db")
-
-    df_approval = pd.read_sql("SELECT * FROM ApprovalRatings", conn)
+    conn = sqlite3.connect("/Users/kayleeboudrie/SI206Final/final_project.db")
+    df_approval = pd.read_sql("SELECT * FROM GallupApproval", conn)
     df_news = pd.read_sql("SELECT * FROM NewsSentiment", conn)
 
     df_approval['date'] = pd.to_datetime(df_approval['date'])
     df_news['published_date'] = pd.to_datetime(df_news['published_date'])
 
-    # Round dates to the week or align them
-    df_approval['day'] = df_approval['date'].dt.date
-    df_news['day'] = df_news['published_date'].dt.date
+    df_approval['week'] = df_approval['date'].dt.to_period('W').dt.start_time
+    df_news['week'] = df_news['published_date'].dt.to_period('W').dt.start_time
 
-    # Group by day and average
-    df_news_grouped = df_news.groupby('day')['sentiment_score'].mean().reset_index()
-    df_approval_grouped = df_approval.groupby('day')['approval'].mean().reset_index()
+    df_news_grouped = df_news.groupby('week')['sentiment_score'].mean().reset_index()
+    df_approval_grouped = df_approval.groupby('week')['approval_rating'].mean().reset_index()
 
-    merged = pd.merge(df_news_grouped, df_approval_grouped, on='day')
-    merged.to_csv("data/sentiment_output.txt", index=False)
+    print("Approval weeks:")
+    print(df_approval_grouped.head(10))
 
+    print("News weeks:")
+    print(df_news_grouped.head(10))
+
+    merged = pd.merge(df_news_grouped, df_approval_grouped, on='week')
+
+    print("Merged Data:")
+    print(merged.head())
+
+    merged.to_csv("/Users/kayleeboudrie/SI206Final/sentiment_output.txt", index=False)
     return merged
 
 def create_visualizations(df):
-    sns.lineplot(x='day', y='sentiment_score', data=df, label="News Sentiment")
-    sns.lineplot(x='day', y='approval', data=df, label="Approval Rating")
+    sns.set(style="whitegrid")
+    plt.figure(figsize=(12, 6))
+
+    sns.lineplot(x='week', y='sentiment_score', data=df, label="News Sentiment", color='blue', marker='o')
+    sns.lineplot(x='week', y='approval_rating', data=df, label="Approval Rating", color='red', marker='o')
+
     plt.xticks(rotation=45)
     plt.title("Trump: Sentiment vs Approval Over Time")
+    plt.xlabel("Date")
+    plt.ylabel("Score")
+    plt.legend()
     plt.tight_layout()
-    plt.savefig("data/comparison_plot.png")
+    plt.savefig("/Users/kayleeboudrie/SI206Final/comparison_plot.png")
     plt.show()
 
 if __name__ == "__main__":

@@ -1,0 +1,1 @@
+week,sentiment_score,approval_rating

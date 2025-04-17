@@ -5,9 +5,8 @@ import nltk
 nltk.download('vader_lexicon')
 
 def create_tables():
-    conn = sqlite3.connect("data/approval_data.db")
+    conn = sqlite3.connect("/Users/kayleeboudrie/SI206Final/final_project.db")
     cur = conn.cursor()
-
     cur.execute('''
         CREATE TABLE IF NOT EXISTS NewsSentiment (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -20,15 +19,14 @@ def create_tables():
     conn.close()
 
 def fetch_and_store_articles():
-    api_key = "your_api_key_here"
+    api_key = "607a3ee5-2c99-4a39-9da1-1b6aba16adf1"
     url = "https://api.newsapi.ai/api/v1/article/getArticles"
 
-    # Modify this as needed — based on the API you're using
     headers = {'X-API-KEY': api_key}
     params = {
         "keyword": "Trump",
-        "startDate": "2016-11-09",  # example
-        "endDate": "2017-03-01",    # example
+        "startDate": "2016-11-09",
+        "endDate": "2017-03-01",
         "limit": 25
     }
 
@@ -37,7 +35,7 @@ def fetch_and_store_articles():
     
     sid = SentimentIntensityAnalyzer()
 
-    conn = sqlite3.connect("data/approval_data.db")
+    conn = sqlite3.connect("/Users/kayleeboudrie/SI206Final/final_project.db")
     cur = conn.cursor()
 
     for article in articles:
@@ -52,5 +50,3 @@ def fetch_and_store_articles():
 if __name__ == "__main__":
     create_tables()
     fetch_and_store_articles()
-
-#wojrouwrguowrngouwrbngouwrFUHWnfiponwrouVBNWOBVIWrbnvgiuwhGOInfvoidwnVOPIejqfoiuwhrbgvojnswpigWHO
