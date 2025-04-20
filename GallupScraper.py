@@ -6,7 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 def create_tables():
-    #conn = sqlite3.connect("/Users/kayleeboudrie/SI206Final/final_project.db")
+    conn = sqlite3.connect("/Users/kayleeboudrie/SI206Final/final_project.db")
 
     cur = conn.cursor()
 
@@ -63,4 +63,4 @@ def scrape_gallup(limit=1000):
 
 if __name__ == "__main__":
     create_tables()
-    scrape_gallup2()
+    scrape_gallup()
