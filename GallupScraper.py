@@ -1,10 +1,15 @@
 import sqlite3
 import requests
 from bs4 import BeautifulSoup
+from urllib.parse import urljoin
+import pandas as pd
+import matplotlib.pyplot as plt
 
 def create_tables():
-    conn = sqlite3.connect("/Users/kayleeboudrie/SI206Final/final_project.db")
+    #conn = sqlite3.connect("/Users/kayleeboudrie/SI206Final/final_project.db")
+
     cur = conn.cursor()
+
     cur.execute('''
         CREATE TABLE IF NOT EXISTS GallupApproval (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -55,10 +60,7 @@ def scrape_gallup(limit=1000):
         if inserted >= limit:
             break
 
-    conn.commit()
-    conn.close()
-    print(f"{inserted} new Trump rows inserted into GallupApproval.")
 
 if __name__ == "__main__":
     create_tables()
-    scrape_gallup()
+    scrape_gallup2()

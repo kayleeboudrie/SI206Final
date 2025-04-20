@@ -3,6 +3,7 @@ import requests
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 import nltk
 nltk.download('vader_lexicon')
+API_KEY = "607a3ee5-2c99-4a39-9da1-1b6aba16adf1"
 
 def create_tables():
     conn = sqlite3.connect("/Users/kayleeboudrie/SI206Final/final_project.db")
@@ -18,35 +19,35 @@ def create_tables():
     conn.commit()
     conn.close()
 
-def fetch_and_store_articles():
-    api_key = "607a3ee5-2c99-4a39-9da1-1b6aba16adf1"
-    url = "https://api.newsapi.ai/api/v1/article/getArticles"
-
-    headers = {'X-API-KEY': api_key}
+def get_avg_sentiment_for_date(date_obj):
+    date_str = date_obj.strftime('%Y-%m-%d')
+    url = "https://eventregistry.org/api/v1/article/getArticles"
     params = {
+        "action": "getArticles",
         "keyword": "Trump",
-        "startDate": "2016-11-09",
-        "endDate": "2017-03-01",
-        "limit": 25
+        "dateStart": date_str,
+        "dateEnd": date_str,
+        "lang": "eng",
+        "articlesPage": 1,
+        "articlesCount": 100,
+        "apiKey": API_KEY
     }
 
-    response = requests.get(url, headers=headers, params=params)
-    articles = response.json().get("articles", [])
+    response = requests.get(url, params=params)
+    articles = response.json().get("articles", {}).get("results", [])
     
-    sid = SentimentIntensityAnalyzer()
+    if not articles:
+        return None
 
-    conn = sqlite3.connect("/Users/kayleeboudrie/SI206Final/final_project.db")
-    cur = conn.cursor()
-
+    scores = []
     for article in articles:
-        title = article.get("title", "")
-        pub_date = article.get("publishedDate", "")[:10]
-        sentiment = sid.polarity_scores(title)["compound"]
-        cur.execute("INSERT INTO NewsSentiment (published_date, title, sentiment_score) VALUES (?, ?, ?)", (pub_date, title, sentiment))
+        content = article.get("title", "") + " " + article.get("body", "")
+        if content.strip():
+            sentiment = sid.polarity_scores(content)
+            scores.append(sentiment['compound'])
 
-    conn.commit()
-    conn.close()
+    return sum(scores) / len(scores) if scores else None
 
 if __name__ == "__main__":
     create_tables()
-    fetch_and_store_articles()
+    
