@@ -1,12 +1,14 @@
 import sqlite3
 import requests
-from nltk.sentiment.vader import SentimentIntensityAnalyzer
-import nltk
-nltk.download('vader_lexicon')
-API_KEY = "607a3ee5-2c99-4a39-9da1-1b6aba16adf1"
+from eventregistry import *
+import json
+from datetime import datetime
+
+API_KEY = "359d8fad-ce26-4cd4-8d56-dbbcb7dca803"
+er = EventRegistry(apiKey=API_KEY)
 
 def create_tables():
-    conn = sqlite3.connect("/Users/kayleeboudrie/SI206Final/final_project.db")
+    conn = sqlite3.connect("final_project.db")
     cur = conn.cursor()
     cur.execute('''
         CREATE TABLE IF NOT EXISTS NewsSentiment (
@@ -19,35 +21,81 @@ def create_tables():
     conn.commit()
     conn.close()
 
-def get_avg_sentiment_for_date(date_obj):
-    date_str = date_obj.strftime('%Y-%m-%d')
-    url = "https://eventregistry.org/api/v1/article/getArticles"
-    params = {
-        "action": "getArticles",
-        "keyword": "Trump",
-        "dateStart": date_str,
-        "dateEnd": date_str,
-        "lang": "eng",
-        "articlesPage": 1,
-        "articlesCount": 100,
-        "apiKey": API_KEY
-    }
-
-    response = requests.get(url, params=params)
-    articles = response.json().get("articles", {}).get("results", [])
+def get_avg_sentiment_for_range(start_date, end_date):
+    usUri = er.getLocationUri("USA")
     
-    if not articles:
-        return None
+    
+    query = {
+        "$query": {
+            "$and": [
+            {
+                "conceptUri": "http://en.wikipedia.org/wiki/Donald_Trump"
+            },
+            {
+                "sourceLocationUri": "http://en.wikipedia.org/wiki/United_States"
+            },
+            {
+                "dateStart": start_date.strftime('%Y-%m-%d'),
+                "dateEnd": end_date.strftime('%Y-%m-%d'),
+                "lang": "eng"
+            }
+            ]
+        }
+        }
+    
+    sentiment_scores = []
+    q = QueryArticlesIter.initWithComplexQuery(query)
+    for article in q.execQuery(er, sortBy="socialScore", maxItems=100):  # Max items set to 100
+        sentiment_score = article.get("sentiment", 0)  # Get the sentiment score, default to 0 if not available
+        sentiment_scores.append(sentiment_score)
 
-    scores = []
-    for article in articles:
-        content = article.get("title", "") + " " + article.get("body", "")
-        if content.strip():
-            sentiment = sid.polarity_scores(content)
-            scores.append(sentiment['compound'])
+    if sentiment_scores:
+        avg_sentiment = sum(sentiment_scores) / len(sentiment_scores)
+    else:
+        avg_sentiment = 0  # No articles found, default to 0
 
-    return sum(scores) / len(scores) if scores else None
+    return avg_sentiment
+    
+def get_sentiment_for_date_ranges(date_ranges):
+    sentiment_data = []
+    for start_date, end_date in date_ranges:
+        avg_sentiment = get_avg_sentiment_for_range(start_date, end_date)
+        sentiment_data.append({
+            'start_date': start_date.strftime('%Y-%m-%d'),
+            'end_date': end_date.strftime('%Y-%m-%d'),
+            'avg_sentiment': avg_sentiment
+        })
+    return sentiment_data
+
+
+def store_sentiment_in_db(sentiment_data):
+    conn = sqlite3.connect("final_project.db")
+    cur = conn.cursor()
+    
+    for data in sentiment_data:
+        cur.execute('''
+            INSERT INTO NewsSentiment (published_date, title, sentiment_score)
+            VALUES (?, ?, ?)
+        ''', (data['start_date'], f"Sentiment for {data['start_date']} to {data['end_date']}", data['avg_sentiment']))
+    
+    conn.commit()
+    conn.close()
 
 if __name__ == "__main__":
-    create_tables()
+    custom_date_ranges = [
+        (datetime(2017, 1, 20), datetime(2017, 1, 30)),
+        (datetime(2017, 1, 30), datetime(2017, 2, 6)),
+    ]
+    print(datetime(2017, 1, 20).strftime('%Y-%m-%d'))
+
+    sentiment_data = get_sentiment_for_date_ranges(custom_date_ranges)
+
+
+    store_sentiment_in_db(sentiment_data)
+    
+    for data in sentiment_data:
+        print(f"Sentiment from {data['start_date']} to {data['end_date']}: {data['avg_sentiment']}")
+
+    
+
     
