@@ -27,7 +27,7 @@ def scrape_gallup(limit=1000):
     soup = BeautifulSoup(response.text, "html.parser")
     tables = soup.find_all("table")
 
-    conn = sqlite3.connect("/Users/kayleeboudrie/SI206Final/final_project.db")
+    conn = sqlite3.connect("final_project.db")
     cur = conn.cursor()
     inserted = 0
 

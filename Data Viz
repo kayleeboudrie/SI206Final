@@ -4,7 +4,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 def join_and_analyze():
-    conn = sqlite3.connect("/Users/kayleeboudrie/SI206Final/final_project.db")
+    conn = sqlite3.connect("final_project.db")
     df_approval = pd.read_sql("SELECT * FROM GallupApproval", conn)
     df_news = pd.read_sql("SELECT * FROM NewsSentiment", conn)
 
