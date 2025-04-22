@@ -10,6 +10,7 @@ er = EventRegistry(apiKey=API_KEY)
 def create_tables():
     conn = sqlite3.connect("final_project.db")
     cur = conn.cursor()
+    cur.execute("DROP TABLE IF EXISTS NewsSentiment")
     cur.execute('''
         CREATE TABLE IF NOT EXISTS NewsSentiment (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -22,8 +23,6 @@ def create_tables():
     conn.close()
 
 def get_avg_sentiment_for_range(start_date, end_date):
-    usUri = er.getLocationUri("USA")
-    
     
     query = {
         "$query": {
@@ -68,20 +67,28 @@ def get_sentiment_for_date_ranges(date_ranges):
     return sentiment_data
 
 
-def store_sentiment_in_db(sentiment_data):
+def store_sentiment_in_db(sentiment_data, batch_size =25):
     conn = sqlite3.connect("final_project.db")
     cur = conn.cursor()
     
-    for data in sentiment_data:
-        cur.execute('''
-            INSERT INTO NewsSentiment (published_date, title, sentiment_score)
-            VALUES (?, ?, ?)
-        ''', (data['start_date'], f"Sentiment for {data['start_date']} to {data['end_date']}", data['avg_sentiment']))
+    total = len(sentiment_data)
+    for i in range(0, total, batch_size):
+        batch = sentiment_data[i : i + batch_size]
+        for data in batch:
+            cur.execute('''
+                INSERT OR IGNORE INTO NewsSentiment (published_date, title, sentiment_score)
+                VALUES (?, ?, ?)
+            ''', (
+                data['start_date'],
+                f"Sentiment for {data['start_date']} to {data['end_date']}",
+                data['avg_sentiment']
+            ))
+        conn.commit()
     
-    conn.commit()
     conn.close()
 
 if __name__ == "__main__":
+
     custom_date_ranges = [
         (datetime(2017, 1, 20), datetime(2017, 1, 30)),
         (datetime(2017, 1, 30), datetime(2017, 2, 6)),
