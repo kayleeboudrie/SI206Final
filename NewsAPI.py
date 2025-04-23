@@ -7,8 +7,8 @@ from datetime import datetime
 API_KEY = "359d8fad-ce26-4cd4-8d56-dbbcb7dca803"
 er = EventRegistry(apiKey=API_KEY)
 
-def get_poll_date_ranges(db_path="final_project.db"):
-    conn = sqlite3.connect(db_path)
+def get_poll_date_ranges():
+    conn = sqlite3.connect("final_project.db")
     cur = conn.cursor()
     cur.execute("SELECT date FROM GallupApproval ORDER BY date")
     rows = cur.fetchall()
@@ -16,8 +16,7 @@ def get_poll_date_ranges(db_path="final_project.db"):
 
     dates = []
     for (date_str,) in rows:
-        # try ISO first, then fallback to 'Jan 20 2017' style
-        for fmt in ("%Y-%m-%d", "%b %d %Y"):
+        for fmt in ("%Y-%m-%d"):
             try:
                 dates.append(datetime.strptime(date_str, fmt))
                 break
