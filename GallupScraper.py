@@ -133,5 +133,6 @@ if __name__ == "__main__":
     print(f"Inserted {len(records)} to database")
 
     create_poll_changes_table()
+    
     store_poll_changes()
     print("Poll changes written to the database.")

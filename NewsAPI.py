@@ -1,5 +1,6 @@
 import sqlite3
 from eventregistry import *
+
 from datetime import datetime
 
 API_KEY = "359d8fad-ce26-4cd4-8d56-dbbcb7dca803"

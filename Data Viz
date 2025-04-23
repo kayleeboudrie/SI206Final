@@ -1,59 +1,119 @@
 
 import sqlite3
 import pandas as pd
+import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
-def join_and_analyze():
+def join_and_scale(db_path="final_project.db"):
+    import sqlite3, pandas as pd
+
+    # load both series
+    conn = sqlite3.connect(db_path)
+    df_poll = pd.read_sql(
+      "SELECT end_date AS date, change FROM PollChanges ORDER BY date",
+      conn, parse_dates=["date"]
+    )
+    df_sent = pd.read_sql(
+      "SELECT published_date AS date, sentiment_score FROM NewsSentiment ORDER BY date",
+      conn, parse_dates=["date"]
+    )
+    conn.close()
+
+    df = pd.merge(df_poll, df_sent, on="date", how="inner").sort_values("date")
+
+    # compute min/max for each
+    min_s, max_s = df["sentiment_score"].min(), df["sentiment_score"].max()
+    min_c, max_c = df["change"].min(),          df["change"].max()
+
+    # linear map: sentiment_score → [min_c, max_c]
+    df["sentiment_scaled"] = (
+        (df["sentiment_score"] - min_s)
+        / (max_s - min_s)
+    ) * (max_c - min_c) + min_c
+
+    return df
+
+
+def create_combined_viz(df):
+    plt.figure(figsize=(15, 6))
+    sns.lineplot(
+        data=df, x="date", y="change",
+        marker="o", label="Poll Change", color="red"
+    )
+    sns.lineplot(
+        data=df, x="date", y="sentiment_scaled",
+        marker="s", label="Sentiment", color="blue"
+    )
+    plt.xticks(rotation=45)
+    plt.title("Poll Change vs. Scaled News Sentiment Over Time")
+    plt.xlabel("Date")
+    plt.ylabel("Value")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig("poll_change_vs_scaled_sentiment.png")
+    plt.show()
+
+def create_approval_viz():
     conn = sqlite3.connect("final_project.db")
 
     df_approval = pd.read_sql("SELECT * FROM GallupApproval", conn)
-    df_news = pd.read_sql("SELECT * FROM NewsSentiment", conn)
-
     df_approval['date'] = pd.to_datetime(df_approval['date'])
-    df_news['published_date'] = pd.to_datetime(df_news['published_date'])
 
-    print("NewsSentiment Date Range:", df_news['published_date'].min(), "to", df_news['published_date'].max())
-    
-    df_news_grouped = df_news.groupby('published_date')['sentiment_score'].mean().reset_index()
-    df_approval_grouped = df_approval.groupby('date')['approval_rating'].mean().reset_index()
-
-    df_news_resampled = df_news_grouped.set_index('published_date').resample('D').mean()
-    df_news_resampled['sentiment_score'].fillna(method='ffill', inplace=True)
-
-    merged = pd.merge(df_approval_grouped, df_news_resampled, left_on='date', right_index=True, how='left')
-
-    merged = merged.sort_values('date')
-
-    print(f"Total days (data points): {len(merged)}")
-
-    merged.to_csv("/Users/kayleeboudrie/SI206Final/sentiment_output.txt", index=False)
-
-    return merged
-
-def create_visualizations(df):
-    dates = df['date'].dt.strftime('%Y-%m-%d')
+    dates = df_approval['date'] 
     x = list(range(len(dates)))
 
     print(f"Number of data points to plot: {len(dates)}")
 
     plt.figure(figsize=(40, 10))
-    plt.plot(x, df['approval_rating'], label="Approval Rating", color='red', marker='o')
+    plt.plot(x, df_approval['approval_rating'], label="Approval Rating", color='red', marker='o')
 
     ax = plt.gca()
     ax.xaxis.set_major_locator(MaxNLocator(nbins=len(dates)))
 
     plt.xticks(ticks=x, labels=dates, rotation=90, fontsize=6)
 
-    plt.title("Trump: Sentiment vs Approval Over Time (Per Day)")
+    plt.title("Trump Approval Rate Over Time")
     plt.xlabel("Date")
     plt.ylabel("Score")
     plt.legend()
     plt.tight_layout()
 
-    plt.savefig("/Users/kayleeboudrie/SI206Final/comparison_plot.png")
+    plt.savefig("Approval.png")
+    plt.show()
+
+def create_sentiment_viz():
+    conn = sqlite3.connect("final_project.db")
+
+    df_sentiment = pd.read_sql("SELECT * FROM NewsSentiment", conn)
+    df_sentiment['published_date'] = pd.to_datetime(df_sentiment['published_date'])
+
+    dates2 = df_sentiment['published_date'] 
+    x2 = list(range(len(dates2)))
+
+    print(f"Number of data points to plot: {len(dates2)}")
+
+    plt.figure(figsize=(40, 10))
+    plt.plot(x2, df_sentiment['sentiment_score'], label="Sentiment Score", color='blue', marker='o')
+
+    ax = plt.gca()
+    ax.xaxis.set_major_locator(MaxNLocator(nbins=len(dates2)))
+
+    plt.xticks(ticks=x2, labels=dates2, rotation=90, fontsize=6)
+
+    plt.title("News Sentiment About Trump over Time")
+    plt.xlabel("Date")
+    plt.ylabel("Score")
+    plt.legend()
+    plt.tight_layout()
+
+    plt.savefig("Sentiment.png")
     plt.show()
 
 if __name__ == "__main__":
-    df = join_and_analyze()
-    create_visualizations(df)
+
+    #create_approval_viz()
+    #create_sentiment_viz()
+    df = join_and_scale("final_project.db")  
+    print(df.head())
+    create_combined_viz(df)
