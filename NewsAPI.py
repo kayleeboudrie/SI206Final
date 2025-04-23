@@ -16,15 +16,22 @@ def get_poll_date_ranges():
 
     dates = []
     for (date_str,) in rows:
-        for fmt in ("%Y-%m-%d"):
-            try:
-                dates.append(datetime.strptime(date_str, fmt))
-                break
-            except ValueError:
-                continue
-        else:
-            raise ValueError(f"Unknown date format: {date_str}")
-    return [(dates[i], dates[i+1]) for i in range(len(dates)-1)]
+        try:
+            dt = datetime.fromisoformat(date_str)
+        except ValueError:
+            # fallback to any other strptime patterns you need
+            for fmt in ("%Y-%m-%d", "%b %d %Y"):
+                try:
+                    dt = datetime.strptime(date_str, fmt)
+                    break
+                except ValueError:
+                    continue
+            else:
+                raise ValueError(f"Unknown date format: {date_str}")
+        dates.append(dt)
+
+    # build consecutive (start, end) pairs
+    return [(dates[i], dates[i+1]) for i in range(len(dates) - 1)]
 
 def create_tables():
     conn = sqlite3.connect("final_project.db")
@@ -65,7 +72,8 @@ def get_avg_sentiment_for_range(start_date, end_date):
     q = QueryArticlesIter.initWithComplexQuery(query)
     for article in q.execQuery(er, sortBy="socialScore", maxItems=100):  # Max items set to 100
         sentiment_score = article.get("sentiment", 0)  # Get the sentiment score, default to 0 if not available
-        sentiment_scores.append(sentiment_score)
+        if isinstance(sentiment_score, (int, float)):
+            sentiment_scores.append(sentiment_score)
 
     if sentiment_scores:
         avg_sentiment = sum(sentiment_scores) / len(sentiment_scores)
@@ -108,20 +116,16 @@ def store_sentiment_in_db(sentiment_data, batch_size =25):
 
 if __name__ == "__main__":
     ranges = get_poll_date_ranges()
+    create_tables()
 
-    custom_date_ranges = [
-        (datetime(2017, 1, 20), datetime(2017, 1, 30)),
-        (datetime(2017, 1, 30), datetime(2017, 2, 6)),
-    ]
-    print(datetime(2017, 1, 20).strftime('%Y-%m-%d'))
-
-    sentiment_data = get_sentiment_for_date_ranges(custom_date_ranges)
-
+    sentiment_data = get_sentiment_for_date_ranges(ranges)
+    print("done")
 
     store_sentiment_in_db(sentiment_data)
-    
+    print("done")
     for data in sentiment_data:
         print(f"Sentiment from {data['start_date']} to {data['end_date']}: {data['avg_sentiment']}")
+    print("done")
 
     
 
