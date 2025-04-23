@@ -18,7 +18,7 @@ def get_poll_date_ranges():
         try:
             dt = datetime.fromisoformat(date_str)
         except ValueError:
-            # fallback to any other strptime patterns you need
+
             for fmt in ("%Y-%m-%d", "%b %d %Y"):
                 try:
                     dt = datetime.strptime(date_str, fmt)
@@ -69,15 +69,15 @@ def get_avg_sentiment_for_range(start_date, end_date):
     
     sentiment_scores = []
     q = QueryArticlesIter.initWithComplexQuery(query)
-    for article in q.execQuery(er, sortBy="socialScore", maxItems=100):  # Max items set to 100
-        sentiment_score = article.get("sentiment", 0)  # Get the sentiment score, default to 0 if not available
+    for article in q.execQuery(er, sortBy="socialScore", maxItems=100):  
+        sentiment_score = article.get("sentiment", 0) 
         if isinstance(sentiment_score, (int, float)):
             sentiment_scores.append(sentiment_score)
 
     if sentiment_scores:
         avg_sentiment = sum(sentiment_scores) / len(sentiment_scores)
     else:
-        avg_sentiment = 0  # No articles found, default to 0
+        avg_sentiment = 0 
 
     return avg_sentiment
     
