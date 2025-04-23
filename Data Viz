@@ -1,49 +1,56 @@
+
 import sqlite3
 import pandas as pd
-import seaborn as sns
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 
 def join_and_analyze():
     conn = sqlite3.connect("final_project.db")
+
     df_approval = pd.read_sql("SELECT * FROM GallupApproval", conn)
     df_news = pd.read_sql("SELECT * FROM NewsSentiment", conn)
 
     df_approval['date'] = pd.to_datetime(df_approval['date'])
     df_news['published_date'] = pd.to_datetime(df_news['published_date'])
 
-    df_approval['week'] = df_approval['date'].dt.to_period('W').dt.start_time
-    df_news['week'] = df_news['published_date'].dt.to_period('W').dt.start_time
+    print("NewsSentiment Date Range:", df_news['published_date'].min(), "to", df_news['published_date'].max())
+    
+    df_news_grouped = df_news.groupby('published_date')['sentiment_score'].mean().reset_index()
+    df_approval_grouped = df_approval.groupby('date')['approval_rating'].mean().reset_index()
 
-    df_news_grouped = df_news.groupby('week')['sentiment_score'].mean().reset_index()
-    df_approval_grouped = df_approval.groupby('week')['approval_rating'].mean().reset_index()
+    df_news_resampled = df_news_grouped.set_index('published_date').resample('D').mean()
+    df_news_resampled['sentiment_score'].fillna(method='ffill', inplace=True)
 
-    print("Approval weeks:")
-    print(df_approval_grouped.head(10))
+    merged = pd.merge(df_approval_grouped, df_news_resampled, left_on='date', right_index=True, how='left')
 
-    print("News weeks:")
-    print(df_news_grouped.head(10))
+    merged = merged.sort_values('date')
 
-    merged = pd.merge(df_news_grouped, df_approval_grouped, on='week')
-
-    print("Merged Data:")
-    print(merged.head())
+    print(f"Total days (data points): {len(merged)}")
 
     merged.to_csv("/Users/kayleeboudrie/SI206Final/sentiment_output.txt", index=False)
+
     return merged
 
 def create_visualizations(df):
-    sns.set(style="whitegrid")
-    plt.figure(figsize=(12, 6))
+    dates = df['date'].dt.strftime('%Y-%m-%d')
+    x = list(range(len(dates)))
 
-    sns.lineplot(x='week', y='sentiment_score', data=df, label="News Sentiment", color='blue', marker='o')
-    sns.lineplot(x='week', y='approval_rating', data=df, label="Approval Rating", color='red', marker='o')
+    print(f"Number of data points to plot: {len(dates)}")
 
-    plt.xticks(rotation=45)
-    plt.title("Trump: Sentiment vs Approval Over Time")
+    plt.figure(figsize=(40, 10))
+    plt.plot(x, df['approval_rating'], label="Approval Rating", color='red', marker='o')
+
+    ax = plt.gca()
+    ax.xaxis.set_major_locator(MaxNLocator(nbins=len(dates)))
+
+    plt.xticks(ticks=x, labels=dates, rotation=90, fontsize=6)
+
+    plt.title("Trump: Sentiment vs Approval Over Time (Per Day)")
     plt.xlabel("Date")
     plt.ylabel("Score")
     plt.legend()
     plt.tight_layout()
+
     plt.savefig("/Users/kayleeboudrie/SI206Final/comparison_plot.png")
     plt.show()
 
