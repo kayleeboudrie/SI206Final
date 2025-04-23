@@ -7,6 +7,26 @@ from datetime import datetime
 API_KEY = "359d8fad-ce26-4cd4-8d56-dbbcb7dca803"
 er = EventRegistry(apiKey=API_KEY)
 
+def get_poll_date_ranges(db_path="final_project.db"):
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+    cur.execute("SELECT date FROM GallupApproval ORDER BY date")
+    rows = cur.fetchall()
+    conn.close()
+
+    dates = []
+    for (date_str,) in rows:
+        # try ISO first, then fallback to 'Jan 20 2017' style
+        for fmt in ("%Y-%m-%d", "%b %d %Y"):
+            try:
+                dates.append(datetime.strptime(date_str, fmt))
+                break
+            except ValueError:
+                continue
+        else:
+            raise ValueError(f"Unknown date format: {date_str}")
+    return [(dates[i], dates[i+1]) for i in range(len(dates)-1)]
+
 def create_tables():
     conn = sqlite3.connect("final_project.db")
     cur = conn.cursor()
@@ -88,6 +108,7 @@ def store_sentiment_in_db(sentiment_data, batch_size =25):
     conn.close()
 
 if __name__ == "__main__":
+    ranges = get_poll_date_ranges()
 
     custom_date_ranges = [
         (datetime(2017, 1, 20), datetime(2017, 1, 30)),
