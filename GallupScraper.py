@@ -2,7 +2,6 @@ import os
 import re
 import sqlite3
 import requests
-import pandas as pd
 from bs4 import BeautifulSoup
 from datetime import datetime
 
@@ -27,31 +26,35 @@ def scrape_gallup(limit=1000):
     resp = requests.get(url)
     resp.raise_for_status()
     soup = BeautifulSoup(resp.text, "lxml")
-    tables = soup.find_all("table")
-    print(f"Found {len(tables)} <table> tags on the page")
-    for i, tbl in enumerate(tables):
-        print(f"\nTable #{i}, class={tbl.get('class')}")
-        snippet = tbl.prettify()[:300].replace("\n"," ")
-        print("  html preview:", snippet)
 
-    table = soup.find("table", class_="views-table")
+    table = soup.find("table")
     if not table:
-        raise RuntimeError("Could not locate the approval table on UCSB page")
+        raise RuntimeError("No <table> found on page")
 
-    # extract headers
     headers = [th.get_text(strip=True) for th in table.thead.find_all("th")]
-    # find the right columns
     date_idx = headers.index("Start Date")
     appr_idx = headers.index("Approving")
 
     records = []
     for tr in table.tbody.find_all("tr")[:limit]:
         cols = [td.get_text(strip=True) for td in tr.find_all("td")]
-        # parse date
-        dt = datetime.strptime(cols[date_idx], "%m/%d/%Y")
+
+        raw_date = cols[date_idx].strip()
+        if not raw_date:
+            continue
+
+        try:
+            dt = datetime.strptime(raw_date, "%m/%d/%Y")
+        except ValueError:
+            continue
+
         date_str = dt.strftime("%Y-%m-%d")
-        # parse approval rating
-        appr = float(cols[appr_idx])
+
+        try:
+            appr = float(cols[appr_idx])
+        except ValueError:
+            continue
+
         records.append({
             "date": date_str,
             "President": "Trump",
@@ -59,6 +62,8 @@ def scrape_gallup(limit=1000):
         })
 
     return records
+
+    
 
 
 def store_gallup_in_db(records, batch_size=25):
