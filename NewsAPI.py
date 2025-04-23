@@ -1,7 +1,5 @@
 import sqlite3
-import requests
 from eventregistry import *
-import json
 from datetime import datetime
 
 API_KEY = "359d8fad-ce26-4cd4-8d56-dbbcb7dca803"
@@ -126,7 +124,3 @@ if __name__ == "__main__":
     for data in sentiment_data:
         print(f"Sentiment from {data['start_date']} to {data['end_date']}: {data['avg_sentiment']}")
     print("done")
-
-    
-
-    

@@ -1,5 +1,4 @@
-import os
-import re
+
 import sqlite3
 import requests
 from bs4 import BeautifulSoup
@@ -63,12 +62,14 @@ def scrape_gallup(limit=1000):
 
     return records
 
-    
-
 
 def store_gallup_in_db(records, batch_size=25):
     conn = sqlite3.connect("final_project.db")
     cur  = conn.cursor()
+    records = sorted(
+        records,
+        key=lambda d: d['date']
+    )
 
     total = len(records)
     for i in range(0, total, batch_size):
@@ -86,9 +87,51 @@ def store_gallup_in_db(records, batch_size=25):
 
     conn.close()
 
+def create_poll_changes_table():
+    conn = sqlite3.connect("final_project.db")
+    cur = conn.cursor()
+    cur.execute("DROP TABLE IF EXISTS PollChanges")
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS PollChanges (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            start_date TEXT NOT NULL,
+            end_date   TEXT NOT NULL,
+            change     REAL NOT NULL,
+            UNIQUE(start_date, end_date)
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+def store_poll_changes():
+   
+    conn = sqlite3.connect("final_project.db")
+    cur = conn.cursor()
+
+    cur.execute("SELECT date, approval_rating FROM GallupApproval ORDER BY date")
+    rows = cur.fetchall()
+
+    changes = []
+    for (start_date, start_rating), (end_date, end_rating) in zip(rows, rows[1:]):
+        diff = end_rating - start_rating
+        changes.append((start_date, end_date, diff))
+
+    for start_date, end_date, diff in changes:
+        cur.execute("""
+            INSERT OR IGNORE INTO PollChanges (start_date, end_date, change)
+            VALUES (?, ?, ?)
+        """, (start_date, end_date, diff))
+
+    conn.commit()
+    conn.close()
+
 if __name__ == "__main__":
 
     create_tables()
     records = scrape_gallup()
     store_gallup_in_db(records)
-    print(f"Inserted up to 25 rows per batch, total {len(records)} records prepared.")
+    print(f"Inserted {len(records)} to database")
+
+    create_poll_changes_table()
+    store_poll_changes()
+    print("Poll changes written to the database.")
